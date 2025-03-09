@@ -16,6 +16,9 @@ jobs:
       security-events: write # For uploading SARIF results
       
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Create Trivy config
         run: |
           cat > trivy-template.tpl << 'EOL'
@@ -31,8 +34,8 @@ jobs:
                     "fullName": "Trivy Vulnerability Scanner",
                     "version": "0.57.1",
                     "rules": [
-                      {{ range $result := . }}
-                      {{- range .Vulnerabilities -}}
+                      {{- range $index, $result := . }}
+                      {{- range $vulnIndex, $vulnerability := .Vulnerabilities }}
                       {
                         "id": {{ .VulnerabilityID | toJson }},
                         "name": {{ printf "%s-%s" .PkgName .VulnerabilityID | toJson }},
@@ -57,15 +60,15 @@ jobs:
                           ],
                           "precision": "very-high"
                         }
-                      }{{ if not (last $) }},{{ end }}
+                      }{{- if or (not (last $result.Vulnerabilities $vulnIndex)) (not (last $ $index)) }},{{ end }}
                       {{- end -}}
-                      {{ end }}
+                      {{- end }}
                     ]
                   }
                 },
                 "results": [
-                  {{ range $result := . }}
-                  {{- range .Vulnerabilities -}}
+                  {{- range $index, $result := . }}
+                  {{- range $vulnIndex, $vulnerability := .Vulnerabilities }}
                   {
                     "ruleId": {{ .VulnerabilityID | toJson }},
                     "message": {
@@ -90,9 +93,9 @@ jobs:
                     "partialFingerprints": {
                       "primaryLocationLineHash": {{ .VulnerabilityID | sha256sum | toJson }}
                     }
-                  }{{ if not (last $) }},{{ end }}
+                  }{{- if or (not (last $result.Vulnerabilities $vulnIndex)) (not (last $ $index)) }},{{ end }}
                   {{- end -}}
-                  {{ end }}
+                  {{- end }}
                 ],
                 "columnKind": "utf16CodeUnits",
                 "originalUriBaseIds": {
