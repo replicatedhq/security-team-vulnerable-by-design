@@ -71,7 +71,7 @@ jobs:
           mv enriched-results.sarif results.sarif
       
       - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: results.sarif
           # Use a unique category based on the image name
