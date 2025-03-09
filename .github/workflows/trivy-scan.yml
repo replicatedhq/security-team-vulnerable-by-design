@@ -1,0 +1,44 @@
+name: Trivy Security Scan
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Run daily at midnight UTC
+  workflow_dispatch:      # Allow manual triggering
+
+permissions: {}  # Remove all permissions by default
+
+jobs:
+  scan-tensorflow:
+    name: Scan TensorFlow Nightly Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read        # For checkout
+      security-events: write # For uploading SARIF results
+      
+    steps:
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'tensorflow/tensorflow:nightly'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          ignore-unfixed: true
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'tensorflow-cve-scan'
+
+      - name: Upload SARIF file as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-results
+          path: trivy-results.sarif
+          retention-days: 5
+    timeout-minutes: 30
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true 
