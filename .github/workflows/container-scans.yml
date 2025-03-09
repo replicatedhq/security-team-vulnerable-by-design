@@ -1,0 +1,43 @@
+name: Container Security Scans
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/container-scans.yml'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  # TensorFlow nightly image
+  scan-tensorflow-nightly:
+    name: Scan TensorFlow Nightly
+    uses: ./.github/workflows/scan-container-image.yml
+    with:
+      image: tensorflow/tensorflow:nightly
+      severity-cutoff: medium
+  
+  # TensorFlow latest image
+  scan-tensorflow-latest:
+    name: Scan TensorFlow Latest
+    uses: ./.github/workflows/scan-container-image.yml
+    with:
+      image: tensorflow/tensorflow:latest
+      severity-cutoff: medium
+  
+  # Replicated SDK
+  scan-replicated-sdk:
+    name: Scan Replicated SDK
+    uses: ./.github/workflows/scan-container-image.yml
+    with:
+      image: replicated/replicated-sdk:1.1.0
+      severity-cutoff: high
+      fail-build: true
+  
+  # Add more jobs here for additional images
+  # scan-another-image:
+  #   name: Scan Another Image
+  #   uses: ./.github/workflows/scan-container-image.yml
+  #   with:
+  #     image: organization/image:tag
