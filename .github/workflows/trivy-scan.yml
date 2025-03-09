@@ -34,8 +34,8 @@ jobs:
                     "fullName": "Trivy Vulnerability Scanner",
                     "version": "0.57.1",
                     "rules": [
-                      {{- range $index, $result := . }}
-                      {{- range $vulnIndex, $vulnerability := .Vulnerabilities }}
+                      {{ range $result := . }}
+                      {{- range .Vulnerabilities -}}
                       {
                         "id": {{ .VulnerabilityID | toJson }},
                         "name": {{ printf "%s-%s" .PkgName .VulnerabilityID | toJson }},
@@ -60,15 +60,15 @@ jobs:
                           ],
                           "precision": "very-high"
                         }
-                      }{{- if or (not (last $result.Vulnerabilities $vulnIndex)) (not (last $ $index)) }},{{ end }}
+                      }{{ if not (last $) }},{{ end }}
                       {{- end -}}
-                      {{- end }}
+                      {{ end }}
                     ]
                   }
                 },
                 "results": [
-                  {{- range $index, $result := . }}
-                  {{- range $vulnIndex, $vulnerability := .Vulnerabilities }}
+                  {{ range $result := . }}
+                  {{- range .Vulnerabilities -}}
                   {
                     "ruleId": {{ .VulnerabilityID | toJson }},
                     "message": {
@@ -93,9 +93,9 @@ jobs:
                     "partialFingerprints": {
                       "primaryLocationLineHash": {{ .VulnerabilityID | sha256sum | toJson }}
                     }
-                  }{{- if or (not (last $result.Vulnerabilities $vulnIndex)) (not (last $ $index)) }},{{ end }}
+                  }{{ if not (last $) }},{{ end }}
                   {{- end -}}
-                  {{- end }}
+                  {{ end }}
                 ],
                 "columnKind": "utf16CodeUnits",
                 "originalUriBaseIds": {
