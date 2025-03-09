@@ -1,0 +1,143 @@
+name: Trivy Security Scan
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Run daily at midnight UTC
+  workflow_dispatch:      # Allow manual triggering
+
+permissions: {}  # Remove all permissions by default
+
+jobs:
+  scan-tensorflow:
+    name: Scan TensorFlow Nightly Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read        # For checkout
+      security-events: write # For uploading SARIF results
+      
+    steps:
+      - name: Create Trivy config
+        run: |
+          cat > trivy-template.tpl << 'EOL'
+          {
+            "version": "2.1.0",
+            "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+            "runs": [
+              {
+                "tool": {
+                  "driver": {
+                    "name": "Trivy",
+                    "informationUri": "https://github.com/aquasecurity/trivy",
+                    "fullName": "Trivy Vulnerability Scanner",
+                    "version": "0.57.1",
+                    "rules": [
+                      {{ range $result := . }}
+                      {{- range .Vulnerabilities -}}
+                      {
+                        "id": {{ .VulnerabilityID | toJson }},
+                        "name": {{ printf "%s-%s" .PkgName .VulnerabilityID | toJson }},
+                        "shortDescription": {
+                          "text": {{ .Title | toJson }}
+                        },
+                        "fullDescription": {
+                          "text": {{ .Description | toJson }}
+                        },
+                        "defaultConfiguration": {
+                          "level": {{ if eq .Severity "CRITICAL" }}{{ "error" | toJson }}{{ else if eq .Severity "HIGH" }}{{ "error" | toJson }}{{ else if eq .Severity "MEDIUM" }}{{ "warning" | toJson }}{{ else }}{{ "note" | toJson }}{{ end }}
+                        },
+                        "help": {
+                          "text": {{ .Description | toJson }},
+                          "markdown": {{ printf "%s\n\n%s\n\n**Severity**: %s\n\n**References**:\n%s" .Title .Description .Severity .References | toJson }}
+                        },
+                        "properties": {
+                          "tags": [
+                            "vulnerability",
+                            "security",
+                            {{ .Severity | toJson }}
+                          ],
+                          "precision": "very-high"
+                        }
+                      }{{ if not (last $) }},{{ end }}
+                      {{- end -}}
+                      {{ end }}
+                    ]
+                  }
+                },
+                "results": [
+                  {{ range $result := . }}
+                  {{- range .Vulnerabilities -}}
+                  {
+                    "ruleId": {{ .VulnerabilityID | toJson }},
+                    "message": {
+                      "text": {{ printf "Vulnerability %s found in %s (Severity: %s, Installed: %s, Fixed: %s)" .VulnerabilityID .PkgName .Severity .InstalledVersion .FixedVersion | toJson }}
+                    },
+                    "locations": [
+                      {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": {{ $result.Target | toJson }},
+                            "uriBaseId": "ROOTPATH"
+                          },
+                          "region": {
+                            "startLine": 1,
+                            "endLine": 1,
+                            "startColumn": 1,
+                            "endColumn": 1
+                          }
+                        }
+                      }
+                    ],
+                    "partialFingerprints": {
+                      "primaryLocationLineHash": {{ .VulnerabilityID | sha256sum | toJson }}
+                    }
+                  }{{ if not (last $) }},{{ end }}
+                  {{- end -}}
+                  {{ end }}
+                ],
+                "columnKind": "utf16CodeUnits",
+                "originalUriBaseIds": {
+                  "ROOTPATH": {
+                    "uri": "file:///"
+                  }
+                },
+                "properties": {
+                  "imageRef": "tensorflow/tensorflow:nightly",
+                  "repository": "${{ github.repository }}",
+                  "scanTime": "${{ github.event.repository.updated_at }}",
+                  "imageMetadata": {
+                    "name": "tensorflow/tensorflow",
+                    "tag": "nightly"
+                  }
+                }
+              }
+            ]
+          }
+          EOL
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'tensorflow/tensorflow:nightly'
+          format: 'template'
+          template: '@trivy-template.tpl'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          ignore-unfixed: true
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'tensorflow-cve-scan'
+
+      - name: Upload SARIF file as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-results
+          path: trivy-results.sarif
+          retention-days: 5
+    timeout-minutes: 30
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true 
