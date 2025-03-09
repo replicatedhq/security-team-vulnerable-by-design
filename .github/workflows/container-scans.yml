@@ -3,10 +3,6 @@ name: Container Security Scans
 on:
   schedule:
     - cron: '0 0 * * 0'  # Weekly on Sunday
-  push:
-    branches: [ main ]
-    paths:
-      - '.github/workflows/container-scans.yml'
   workflow_dispatch:  # Allow manual triggering
 
 jobs:
