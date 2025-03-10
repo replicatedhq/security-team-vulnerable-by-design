@@ -26,6 +26,10 @@ jobs:
   scan-replicated-sdk:
     name: Scan Replicated SDK
     uses: ./.github/workflows/scan-container-image.yml
+    # Grant required permissions to the reusable workflow
+    permissions:
+      contents: read        # Needed to read workflow files
+      security-events: write # Needed to upload SARIF results
     with:
       # Container image to scan (format: repository/image:tag)
       image: replicated/replicated-sdk:1.1.0
@@ -42,6 +46,9 @@ jobs:
   # scan-another-image:
   #   name: Scan Another Image
   #   uses: ./.github/workflows/scan-container-image.yml
+  #   permissions:
+  #     contents: read
+  #     security-events: write
   #   with:
   #     image: organization/image:tag
 
