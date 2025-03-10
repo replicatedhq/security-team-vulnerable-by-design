@@ -1,41 +1,53 @@
+# Container Security Scans
+# This workflow orchestrates security scanning of container images using Anchore scanner.
+# It runs weekly and can be triggered manually to scan various container images for vulnerabilities.
 name: Container Security Scans
 
+# Trigger configuration
 on:
   schedule:
-    - cron: '0 0 * * 0'  # Weekly on Sunday
-  workflow_dispatch:  # Allow manual triggering
+    - cron: '0 0 * * 0'  # Runs weekly at midnight on Sunday (UTC)
+  workflow_dispatch:      # Allows manual triggering through GitHub UI
+
+# Security hardening: Start with no permissions and grant only what's needed
+permissions: {}  # Remove all permissions by default
+
+# Prevent multiple workflow runs from interfering with each other
+# This ensures only one scan runs at a time and new triggers cancel old runs
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  # TensorFlow nightly image
-  scan-tensorflow-nightly:
-    name: Scan TensorFlow Nightly
-    uses: ./.github/workflows/scan-container-image.yml
-    with:
-      image: tensorflow/tensorflow:nightly
-      severity-cutoff: medium
-      fail-build: false
+  # Each job represents a container image to be scanned
+  # The jobs use a reusable workflow (scan-container-image.yml) which contains the scanning logic
   
-  
-  # Replicated SDK
+  # Scan Replicated SDK container
   scan-replicated-sdk:
     name: Scan Replicated SDK
     uses: ./.github/workflows/scan-container-image.yml
     with:
+      # Container image to scan (format: repository/image:tag)
       image: replicated/replicated-sdk:1.1.0
+      # Report findings of medium severity or higher
       severity-cutoff: medium
+      # Continue even if vulnerabilities are found
       fail-build: false
+
+  # Additional container scans can be added following the same pattern
+  # Example configuration for other images (currently disabled):
+
   
-  # Add more jobs here for additional images
+  # Template for adding new container scans:
   # scan-another-image:
   #   name: Scan Another Image
   #   uses: ./.github/workflows/scan-container-image.yml
   #   with:
   #     image: organization/image:tag
-  # TensorFlow latest image
-  # scan-tensorflow-latest:
-  #   name: Scan TensorFlow Latest
-  #   uses: ./.github/workflows/scan-container-image.yml
-  #   with:
-  #     image: tensorflow/tensorflow:latest
-  #     severity-cutoff: medium
-  #     fail-build: false
+
+# Note: Each scan will:
+# 1. Pull the specified container image
+# 2. Scan for vulnerabilities using Anchore
+# 3. Generate a SARIF report
+# 4. Upload findings to GitHub Security tab
+# 5. Store scan results as artifacts for 365 days
