@@ -15,14 +15,6 @@ jobs:
       severity-cutoff: medium
       fail-build: false
   
-  # TensorFlow latest image
-  scan-tensorflow-latest:
-    name: Scan TensorFlow Latest
-    uses: ./.github/workflows/scan-container-image.yml
-    with:
-      image: tensorflow/tensorflow:latest
-      severity-cutoff: medium
-      fail-build: false
   
   # Replicated SDK
   scan-replicated-sdk:
@@ -39,3 +31,11 @@ jobs:
   #   uses: ./.github/workflows/scan-container-image.yml
   #   with:
   #     image: organization/image:tag
+  # TensorFlow latest image
+  # scan-tensorflow-latest:
+  #   name: Scan TensorFlow Latest
+  #   uses: ./.github/workflows/scan-container-image.yml
+  #   with:
+  #     image: tensorflow/tensorflow:latest
+  #     severity-cutoff: medium
+  #     fail-build: false
