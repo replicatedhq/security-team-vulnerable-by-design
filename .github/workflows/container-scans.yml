@@ -6,7 +6,6 @@ name: Container Security Scans
 # Trigger configuration
 on:
   schedule:
-    - cron: '0 0 * * 0'  # Runs weekly at midnight on Sunday (UTC)
   workflow_dispatch:      # Allows manual triggering through GitHub UI
 
 # Security hardening: Start with no permissions and grant only what's needed
