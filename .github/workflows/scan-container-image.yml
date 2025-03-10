@@ -1,7 +1,11 @@
+# This is a reusable workflow for scanning container images using Anchore's vulnerability scanner.
+# It can be called from other workflows to scan any container image and report findings to GitHub Security tab.
 name: Scan Container Image
 
+# Define this as a reusable workflow that other workflows can call
 on:
   workflow_call:
+    # Define the inputs that callers must/can provide
     inputs:
       image:
         required: true
@@ -18,15 +22,22 @@ on:
         default: false
         description: 'Fail the workflow if vulnerabilities are found'
 
+permissions: {}  # Remove all permissions by default
+
 jobs:
   scan:
     name: Scan Image
     runs-on: ubuntu-latest
+    timeout-minutes: 30  # Default timeout for the job
+    # Permissions required for security scanning and reporting
     permissions:
       security-events: write  # Needed to upload SARIF results
-      contents: read
+      contents: read         # Needed to read workflow files
     
     steps:
+      # Extract and normalize image details for use in later steps
+      # Handles cases where tag might be missing (defaults to 'latest')
+      # Creates a safe name for use in filenames and categories
       - name: Extract image details
         id: image_details
         run: |
@@ -38,6 +49,8 @@ jobs:
           echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
           echo "safe_name=${SAFE_NAME}" >> $GITHUB_OUTPUT
       
+      # Run Anchore vulnerability scanner on the specified image
+      # Outputs findings in SARIF format for GitHub security dashboard
       - name: Scan image with Anchore
         uses: anchore/scan-action@v3
         id: scan
@@ -47,12 +60,15 @@ jobs:
           severity-cutoff: ${{ inputs.severity-cutoff }}
           output-format: sarif
       
+      # Enrich the SARIF output with additional metadata about the scanned image
+      # This helps with tracking and identifying scan results in GitHub Security tab
       - name: Enrich SARIF with image metadata
         run: |
-          # Install jq
+          # Install jq for JSON processing
           sudo apt-get update && sudo apt-get install -y jq
           
-          # Add metadata to SARIF
+          # Add metadata to SARIF using jq
+          # This includes image details, scan time, and repository information
           jq --arg imageRef "${{ inputs.image }}" \
              --arg repo "${{ steps.image_details.outputs.image_name }}" \
              --arg name "${{ steps.image_details.outputs.image_name }}" \
@@ -70,16 +86,20 @@ jobs:
           
           mv enriched-results.sarif results.sarif
       
+      # Upload the SARIF results to GitHub Security tab
+      # Note: This uploads to the repository where the workflow runs, not the image source
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: results.sarif
-          # Use a unique category based on the image name
+          # Create a unique category for each image to separate findings
           category: "container-scan-${{ steps.image_details.outputs.safe_name }}"
       
+      # Archive the SARIF results as an artifact for later reference
+      # Useful for debugging or historical analysis
       - name: Archive scan results
         uses: actions/upload-artifact@v4
         with:
           name: "sarif-${{ steps.image_details.outputs.safe_name }}"
           path: results.sarif
-          retention-days: 90
+          retention-days: 365
