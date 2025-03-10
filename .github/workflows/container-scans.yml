@@ -5,7 +5,6 @@ name: Container Security Scans
 
 # Trigger configuration
 on:
-  schedule:
   workflow_dispatch:      # Allows manual triggering through GitHub UI
 
 # Security hardening: Start with no permissions and grant only what's needed
