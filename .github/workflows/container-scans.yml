@@ -38,6 +38,30 @@ jobs:
       # Continue even if vulnerabilities are found
       fail-build: false
 
+  # Scan an older version of the Replicated SDK for testing
+  scan-replicated-other-sdk:
+    name: Scan Replicated Other SDK
+    uses: ./.github/workflows/scan-container-image.yml
+    permissions:
+      contents: read        # Needed to read workflow files
+      security-events: write # Needed to upload SARIF results
+    with:
+      image: replicated/replicated-sdk:1.1.1
+      severity-cutoff: medium
+      fail-build: false
+
+  # Scan an older version of the Replicated SDK for testing
+  scan-replicated-other-older-sdk:
+    name: Scan Replicated Other SDK
+    uses: ./.github/workflows/scan-container-image.yml
+    permissions:
+      contents: read        # Needed to read workflow files
+      security-events: write # Needed to upload SARIF results
+    with:
+      image: replicated/replicated-sdk:1.0.0-beta.31
+      severity-cutoff: medium
+      fail-build: false
+
   # Additional container scans can be added following the same pattern
   # Example configuration for other images (currently disabled):
 
