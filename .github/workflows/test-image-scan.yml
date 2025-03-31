@@ -1,0 +1,25 @@
+name: Test Image Security Scan
+
+on:
+  workflow_dispatch:      # Allows manual triggering through GitHub UI
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan-kotsadm:
+    name: Scan Kotsadm
+    uses: ./.github/workflows/scan-image-grype.yml
+    with:
+      image: kotsadm/kotsadm:v1.124.11
+      severity-cutoff: negligible
+      fail-build: false
+      timeout-minutes: 30
+      retention-days: 90
+      category-prefix: 'container-scan-'
